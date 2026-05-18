@@ -1,7 +1,7 @@
 # 🔬 LLM Tuning TCM (中醫舌診參數調優框架)
 
-這是一個自動化搜尋最佳 LLM 推理參數（Prompt、Temperature、Top-P）的調優工具，專為中醫舌診場景設計。
-調優產出的最佳參數，可直接匯回 [Tongue-Diagnosis 主應用](https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis) 的設定中使用。
+這是一個基於非同步架構 (Async) 且具備嚴謹黃金標準驗證的 LLM 推理參數調優工具，專為中醫舌診場景設計。
+透過 PRF1 指標與 Rule-based LLM 裁判的混合評分機制，調優產出的最佳參數，可直接匯回 [Tongue-Diagnosis 主應用](https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis) 的設定中使用。
 
 ## 🎯 核心功能
 - **非同步高併發 (Async Workflow)**：使用 `asyncio` 實作多 Worker 併發，大幅提升參數搜索效率，並支援斷點續傳。

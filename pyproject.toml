@@ -1,7 +1,7 @@
 [project]
 name = "tongue-diagnosis-tuning"
 version = "0.1.0"
-description = "TCM Tongue Diagnosis LLM Parameter Tuning Framework"
+description = "Async TCM Tongue Diagnosis LLM Parameter Tuning Framework with Ground Truth Evaluation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
