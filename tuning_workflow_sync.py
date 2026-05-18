@@ -143,10 +143,10 @@ def run_tuning_experiment(api_key, image_path, prompt_path, output_dir="outputs"
     print("🚀 初始化即時 (Sync) API 測試環境...")
     client = genai.Client(api_key=api_key)
     
-    # 1. 上傳圖片（從 archive 讀取測試影像）
+    # 1. 上傳圖片
     if not image_path or not os.path.exists(image_path):
         raise FileNotFoundError(
-            "找不到實驗用影像。請將測試舌象照片放在 archive/Docs_and_Assets/assets/（例如 archive/Docs_and_Assets/assets/MyTongue.jpg），並於程式中設定 IMAGE_PATH。"
+            "找不到實驗用影像。請在根目錄建立 assets/ 資料夾，並將測試用的照片放置於 assets/MyTongue.jpg，或於程式中設定 IMAGE_PATH。"
         )
 
     print(f"🖼️ 上傳舌象照片 ({image_path})...")

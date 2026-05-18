@@ -13,7 +13,6 @@
 ```text
 .
 ├── prompts/                 # 提示詞存放區 (存放如 system_prompt.md)
-├── config/                  # 其他設定檔
 ├── experiment_data/         # 實驗原始輸出紀錄
 ├── outputs/                 # 產生的分析報告與最佳參數配置 (best_config.yaml)
 ├── reports/                 # 綜合分析報告
