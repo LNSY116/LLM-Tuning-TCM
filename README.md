@@ -20,13 +20,24 @@ D --> E[主應用: 上線驗證]
 ## 📁 目錄結構（簡要）
 
 ```
+├── tuning_workflow_sync.py     # ⭐ 主程式 (支援增量實驗)
+├── .env.example                # 環境變數範本
+├── pyproject.toml              # 專案依賴與配置
 ├── prompts/                    # Prompt 範本 (e.g., v1_doctor.txt)
 ├── reports/                    # 實驗報告與分析
 ├── outputs/                    # 腳本輸出 CSV 與 best_config.yaml
 ├── experiment_data/            # 各實驗的原始輸出
-├── .env.example                # 環境變數範本
-├── tuning_workflow_sync.py     # 主程式 (支援增量實驗)
+├── assets/                     # 測試影像與配置
+└── archive/                    # 舊版本與廢棄腳本
+    ├── tuning_workflow_batch.py    # (已廢棄)
+    ├── retrieve_results.py         # (已廢棄)
+    └── ...
 ```
+
+**注意**：
+- `.env` 本地專用，已納入 `.gitignore`（不上傳版本控制）
+- 主要使用 `tuning_workflow_sync.py`（同步方式，推薦）
+- `archive/` 含舊批次 API 實現，保留供參考
 ```
 
 ## 🚀 快速開始
@@ -52,9 +63,9 @@ cp .env.example .env
 ```
 
 ### 4. 準備測試影像
-- 將舌診照片放在專案根目錄，並在 `tuning_workflow_sync.py` 頂部設定：
+- 將舌診照片放在 `assets` 目錄，並在 `tuning_workflow_sync.py` 頂部設定：
 ```python
-IMAGE_PATH = "MyTongue.jpg"
+IMAGE_PATH = "assets/MyTongue.jpg"
 ```
 
 ### 5. 執行實驗

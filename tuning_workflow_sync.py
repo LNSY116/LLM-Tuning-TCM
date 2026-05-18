@@ -36,7 +36,7 @@ if not API_KEY:
 
 
 MODEL_NAME = "gemini-2.5-flash"
-IMAGE_PATH = "MyTongue.jpg"  # ⚠️ 請將你的舌診照片放入專案根目錄，並修改此路徑
+IMAGE_PATH = "assets/MyTongue.jpg"  # ⚠️ 請將你的舌診照片放入專案 assets 目錄，並修改此路徑
 PROMPT_PATH = "prompts/醫生提示詞參考.txt"
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)

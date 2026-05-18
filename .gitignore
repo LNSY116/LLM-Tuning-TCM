@@ -1,3 +1,51 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints
+
+# Pytest
+.pytest_cache/
+
+# Secrets and keys
+Docs_and_Assets/**/secrets/
+Docs_and_Assets/assets/secrets/
+**/secrets/
+*.key
+*gemini*
+.env
+.env.*
+secrets/
+
+# Notebook outputs and local experiment runs
+archive/Configs_and_Data/experiment_data/
+archive/Configs_and_Data/EXP*/
+
+# local reports (if you want to exclude)
+reports/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
