@@ -254,10 +254,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Editable runtime overlays (defaults are tracked; current is local-only)
-assets/config/*.current.yaml
-assets/prompts/*.current.md
-
 # =========================
 # 本地內部實驗與紀錄檔 (根據您的指示排除)
 # =========================

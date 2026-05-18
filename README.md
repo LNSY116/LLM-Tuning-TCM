@@ -24,8 +24,7 @@
 ## 📁 專案結構
 ```text
 .
-├── assets/                  # 放置公用測試影像 (如 MyTongue.jpg) 與提示詞
-├── archive/                 # 歷史實驗數據、機敏檔案與私人影像 (不進版控)
+├── archive/                 # 歷史實驗數據、測試影像與提示詞 (不進版控)
 ├── outputs/                 # 執行腳本後產生的分析報告與最佳參數配置
 ├── tuning_workflow_sync.py  # 參數調優核心工作流腳本
 ├── requirements.txt         # 依賴套件清單
@@ -53,8 +52,7 @@ cp .env.example .env
 ```
 
 ### 3. 準備測試資料
-請將用來測試的舌象照片放置於 `assets/MyTongue.jpg`。
-*(若要使用個人機敏照片，請放入 `archive/Docs_and_Assets/assets/` 內，腳本會自動 fallback 尋找。)*
+請將用來測試的舌象照片放置於 `archive/Docs_and_Assets/assets/MyTongue.jpg`。
 
 ### 4. 執行調優
 ```bash
