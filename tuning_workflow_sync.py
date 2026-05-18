@@ -39,21 +39,33 @@ if not API_KEY:
 MODEL_NAME = "gemini-2.5-flash"
 ROOT = Path(__file__).resolve().parent
 
-def find_archive_asset(rel_path: str) -> str | None:
-    """Return a filesystem path to an asset in archive."""
-    candidate = ROOT / "archive" / "Docs_and_Assets" / "assets" / rel_path
+def find_asset(rel_path: str, allow_archive_fallback: bool = True) -> str | None:
+    """Return a filesystem path to an asset.
+    Priority: project_root/assets/<rel_path> -> (optional) archive/Docs_and_Assets/assets/<rel_path>
+    """
+    candidate = ROOT / "assets" / rel_path
     if candidate.exists():
         return str(candidate)
+    if allow_archive_fallback:
+        fallback = ROOT / "archive" / "Docs_and_Assets" / "assets" / rel_path
+        if fallback.exists():
+            return str(fallback)
     return None
 
-# IMAGE: load test image from archive
-IMAGE_PATH = find_archive_asset("MyTongue.jpg")
-# PROMPT: load prompt from archive (prefer .current, fallback to .default)
+# IMAGE: prefer root assets (do not accidentally use private photos in archive)
+IMAGE_PATH = find_asset("MyTongue.jpg", allow_archive_fallback=False)
+
+# PROMPT: prefer consolidated system_prompt.md in assets/prompts/ then fallback to archive
 def find_prompt():
-    current = find_archive_asset(os.path.join("prompts", "system.current.md"))
-    if current:
-        return current
-    return find_archive_asset(os.path.join("prompts", "system.default.md"))
+    # prefer consolidated prompt name
+    p = find_asset(os.path.join("prompts", "system_prompt.md"))
+    if p:
+        return p
+    # fallback to archive current/default if needed
+    p = find_asset(os.path.join("prompts", "system.current.md"))
+    if p:
+        return p
+    return find_asset(os.path.join("prompts", "system.default.md"))
 
 PROMPT_PATH = find_prompt()
 OUTPUT_DIR = "outputs"
