@@ -229,3 +229,14 @@ logs/
 # =========================
 !reports/*.md
 !prompts/*.txt
+
+# =========================
+# 冗餘與非實驗代碼 (前端/後端/備份)
+# =========================
+archive/
+src/
+Tongue-Diagnosis/
+sample_data_archive/
+archive_old_data.py
+promptfooconfig.yaml
+tests.yaml
