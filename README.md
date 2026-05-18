@@ -26,8 +26,7 @@ D --> E[主應用: 上線驗證]
 ├── experiment_data/            # 各實驗的原始輸出
 ├── .env.example                # 環境變數範本
 ├── tuning_workflow_sync.py     # 主程式 (支援增量實驗)
-├── tuning_app.py               # Gradio UI（開發中）
-└── agent_system_prompt.md      # 用於自動化調參的系統提示詞
+```
 ```
 
 ## 🚀 快速開始
@@ -79,6 +78,8 @@ python tuning_workflow_sync.py
 ## 範例輸出
 - `outputs/`：CSV 實驗報告、`best_config.yaml`（最佳參數）
 - `experiment_data/`：每次實驗的原始 LLM 輸出
+
+注意：`outputs/` 與 `experiment_data/` 為執行時生成的資料夾，通常會被加入 `.gitignore`，不一定會出現在遠端倉庫。
 
 ## 建議新增項目（可選）
 - 在 `pyproject.toml` 或新增 `requirements.txt` 明確列出依賴版本
