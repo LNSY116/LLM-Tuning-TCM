@@ -1,101 +1,92 @@
-# 🔬 LLM 參數調優框架 — 中醫舌診專用
+# 🔬 LLM 參數調優框架 — 中醫舌診（TCM 舌診）
 
-自動化搜尋最佳推理參數（Prompt + Temperature + Top‑P），專為中醫舌診場景設計。本專案為「參數調優工具」，需搭配主應用系統使用（例如：https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis）。本框架輸出的最佳參數可回填到主應用的 `assets/config/` 或 `prompts/`。
+自動化搜尋最佳推理參數（Prompt + Temperature + Top‑P），專為中醫舌診場景設計。本專案為參數調優工具，通常搭配主應用系統使用（例如：https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis）。本框架產出之最佳參數可匯回主應用的配置或 prompt 資料夾。
 
 ## 🎯 核心功能
-- 網格搜尋：自動測試多組 Prompt × Temperature × Top‑P 組合
-- 穩定性評估：動態重複推論並以 Jaccard 相似度評估一致性
-- 混合評分：規則檢查（術語覆蓋 / 格式）+ LLM 作為評審（語言適切性 / 因果邏輯）
-- 實驗追蹤：自動產出 CSV 報告，並保存原始推論輸出
+- 網格搜尋：測試多組 Prompt × Temperature × Top‑P 組合
+- 穩定性評估：重複推論並以 Jaccard 相似度量一致性
+- 混合評分：規則檢查（術語覆蓋 / 格式）與 LLM 評分（語言適切性 / 因果邏輯）
+- 實驗追蹤：自動輸出 CSV 報告與原始輸出
 
-## 🔄 與主應用系統的協作流程
-```mermaid
-graph LR
-A[主應用: 收集黃金 Prompt] --> B[本框架: 參數網格搜尋]
-B --> C[本框架: 產出最佳參數組合]
-C --> D[回填主應用: 更新 config/prompt]
-D --> E[主應用: 上線驗證]
-```
+## 📁 資料與目錄位置（注意）
+默認情況下，範例資產與歷史實驗資料位於 `archive/`：
 
-## 📁 目錄結構（簡要）
+- 範例圖片與 prompts：`archive/Docs_and_Assets/assets/`
+- 歷史實驗原始輸出：`archive/Configs_and_Data/experiment_data/`
 
-```
-├── tuning_workflow_sync.py     # ⭐ 主程式 (支援增量實驗)
-├── .env.example                # 環境變數範本
-├── pyproject.toml              # 專案依賴與配置
-├── prompts/                    # Prompt 範本 (e.g., v1_doctor.txt)
-├── reports/                    # 實驗報告與分析
-├── outputs/                    # 腳本輸出 CSV 與 best_config.yaml
-├── experiment_data/            # 各實驗的原始輸出
-├── assets/                     # 測試影像與配置
-└── archive/                    # 舊版本與廢棄腳本
-    ├── tuning_workflow_batch.py    # (已廢棄)
-    ├── retrieve_results.py         # (已廢棄)
-    └── ...
-```
-
-**注意**：
-- `.env` 本地專用，已納入 `.gitignore`（不上傳版本控制）
-- 主要使用 `tuning_workflow_sync.py`（同步方式，推薦）
-- `archive/` 含舊批次 API 實現，保留供參考
-```
+建議：若要在主分支直接運行流程，請考慮將必要的 `assets/` 與 `experiment_data/` 移至專案根目錄，或在 README 中說明實際路徑（如上）。
 
 ## 🚀 快速開始
 
-### 1. 環境需求
+### 1) 環境需求
 - Python 3.11+
-- 建議安裝工具 `uv`（或改用其他執行方式）：https://github.com/astral-sh/uv
 
-### 2. 安裝依賴
+### 2) 安裝依賴（兩種常見選法）
+- 使用 `requirements.txt`：
+
 ```bash
-git clone https://github.com/LNSY116/LLM-Tuning-TCM.git
-cd LLM-Tuning-TCM
-# 若使用 pip
 pip install -r requirements.txt
-# 若使用 uv（請先安裝 uv）
-uv sync
 ```
 
-### 3. 設定 API Key
+- 使用 `pyproject.toml`（可用 `pip` 安裝本套件或使用 Poetry）：
+
+```bash
+pip install .
+# 或（開發模式）
+pip install -e .
+```
+
+> 若要使用 `uv`（task runner），請先安裝 `uv`：
+
+```bash
+pip install uv
+# 範例：執行同步工作流
+uv run tuning_workflow_sync.py
+```
+
+### 3) 設定 API Key
+
 ```bash
 cp .env.example .env
-# 編輯 .env，填入必要變數，例如 GEMINI_API_KEY
+# 編輯 .env，填入必要變數（例如 GEMINI_API_KEY）
 ```
 
-### 4. 準備測試影像
-- 將舌診照片放在 `assets` 目錄，並在 `tuning_workflow_sync.py` 頂部設定：
+請勿將 `.env` 或 `archive/Docs_and_Assets/assets/secrets/` 提交到版本控制（已在 `.gitignore` 中排除）。
+
+### 4) 準備測試影像
+- 若你把影像放在 repo 根的 `assets/`，請於 `tuning_workflow_sync.py` 中設定路徑：
+
 ```python
 IMAGE_PATH = "assets/MyTongue.jpg"
 ```
 
-### 5. 執行實驗
-- 使用 `uv`：
+若使用目前的 archive 位置，請改為 `archive/Docs_and_Assets/assets/MyTongue.jpg`。
+
+### 5) 執行實驗
+
 ```bash
+# 直接用 Python
+python tuning_workflow_sync.py
+
+# 或使用 uv（如上）
 uv run tuning_workflow_sync.py
 ```
-- 或直接用 Python：
-```bash
-python tuning_workflow_sync.py
-```
 
-## 📊 Prompt 版本說明 (`prompts/`)
+## 📊 Prompt 版本說明（`prompts/`）
 
-| 版本 | 描述 |
-|---|---|
-| **V1 醫生原版** | 完整專業術語，涵蓋所有診斷維度 |
-| **V2 CoT** | 要求輸出思考過程，提高可解釋性 |
-| **V3 精簡版** | 去除冗詞，條列輸出，一致性較高 |
+- **V1 醫生原版**：完整專業術語，涵蓋所有診斷維度
+- **V2 CoT**：要求輸出思考過程，提高可解釋性
+- **V3 精簡版**：去除冗詞、條列輸出，一致性較高
 
 ## 範例輸出
-- `outputs/`：CSV 實驗報告、`best_config.yaml`（最佳參數）
+- `outputs/`：CSV 實驗報告、`best_config.yaml`
 - `experiment_data/`：每次實驗的原始 LLM 輸出
 
-注意：`outputs/` 與 `experiment_data/` 為執行時生成的資料夾，通常會被加入 `.gitignore`，不一定會出現在遠端倉庫。
+注意：`outputs/` 與 `experiment_data/` 為執行時生成的資料夾，通常會加入 `.gitignore`，不一定會出現在遠端倉庫。
 
-## 建議新增項目（可選）
-- 在 `pyproject.toml` 或新增 `requirements.txt` 明確列出依賴版本
+## 建議（可選）
 - 在 `.env.example` 補上各欄位說明與是否必填
-- 加入「如何貢獻」與聯絡資訊（PR/Issue 指引）
+- 新增 `CONTRIBUTING.md`（PR / Issue 指引）
 
 ## 📜 授權
 MIT License
