@@ -9,12 +9,11 @@
 - 實驗追蹤：自動輸出 CSV 報告與原始輸出
 
 ## 📁 資料與目錄位置（注意）
-默認情況下，範例資產與歷史實驗資料位於 `archive/`：
+本次已將非私人資產複製到專案根的 `assets/`（包含 `assets/config/` 與 `assets/prompts/`），以方便直接在專案根執行工作流。
 
-- 範例圖片與 prompts：`archive/Docs_and_Assets/assets/`
-- 歷史實驗原始輸出：`archive/Configs_and_Data/experiment_data/`
+私人照片與機敏檔案（例如 `archive/Docs_and_Assets/assets/MyTongue.jpg` 與 `archive/Docs_and_Assets/assets/secrets/`）未被複製到根目錄，仍保留在 `archive/` 中以確保隱私安全。
 
-建議：若要在主分支直接運行流程，請考慮將必要的 `assets/` 與 `experiment_data/` 移至專案根目錄，或在 README 中說明實際路徑（如上）。
+歷史實驗原始輸出仍在：`archive/Configs_and_Data/experiment_data/`。
 
 ## 🚀 快速開始
 
