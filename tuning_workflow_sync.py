@@ -3,6 +3,7 @@ import json
 import time
 import pandas as pd
 import itertools
+from pathlib import Path
 from google import genai
 from google.genai import types
 
@@ -36,8 +37,25 @@ if not API_KEY:
 
 
 MODEL_NAME = "gemini-2.5-flash"
-IMAGE_PATH = "assets/MyTongue.jpg"  # ⚠️ 請將你的舌診照片放入專案 assets 目錄，並修改此路徑
-PROMPT_PATH = "prompts/醫生提示詞參考.txt"
+ROOT = Path(__file__).resolve().parent
+
+def find_asset(rel_path: str, allow_archive_fallback: bool = True) -> str | None:
+    """Return a filesystem path to an asset.
+    Priority: project_root/assets/<rel_path> -> (optional) archive/Docs_and_Assets/assets/<rel_path>
+    """
+    candidate = ROOT / "assets" / rel_path
+    if candidate.exists():
+        return str(candidate)
+    if allow_archive_fallback:
+        fallback = ROOT / "archive" / "Docs_and_Assets" / "assets" / rel_path
+        if fallback.exists():
+            return str(fallback)
+    return None
+
+# IMAGE: prefer only root assets to avoid accidentally using private photos kept in archive
+IMAGE_PATH = find_asset("MyTongue.jpg", allow_archive_fallback=False)
+# PROMPT: allow fallback to archive if not present in root assets/
+PROMPT_PATH = find_asset(os.path.join("prompts", "醫生提示詞參考.txt"), allow_archive_fallback=True)
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -47,10 +65,11 @@ TCM_KEYWORDS = [
     "氣虛", "陽虛", "陰虛", "血虛", "痰濕", "濕熱", "氣滯", "血瘀", "化熱"
 ]
 
-# 讀取你的黃金提示詞
-if not os.path.exists(PROMPT_PATH):
-    print(f"❌ 找不到 {PROMPT_PATH}！請確保檔案在同一資料夾中。")
-    exit(1)
+# 讀取你的黃金提示詞（優先 root assets/，否則回退到 archive）
+if not PROMPT_PATH:
+    raise FileNotFoundError(
+        "找不到提示詞檔案 'prompts/醫生提示詞參考.txt'，請放入 assets/prompts/ 或 archive/Docs_and_Assets/assets/prompts/"
+    )
 
 with open(PROMPT_PATH, "r", encoding="utf-8") as f:
     BASE_DOCTOR_PROMPT = f.read()
@@ -112,7 +131,12 @@ def run_tuning_experiment(api_key, image_path, prompt_path, output_dir="outputs"
     print("🚀 初始化即時 (Sync) API 測試環境...")
     client = genai.Client(api_key=api_key)
     
-    # 1. 上傳圖片
+    # 1. 上傳圖片（僅接受放在 repo root 的 assets/ 中之測試影像）
+    if not image_path or not os.path.exists(image_path):
+        raise FileNotFoundError(
+            "找不到實驗用影像。請將非私人測試影像放在專案根的 assets/（例如 assets/MyTongue.jpg），並於程式中設定 IMAGE_PATH。私人照片請勿上傳至遠端或放入 assets/。"
+        )
+
     print(f"🖼️ 上傳舌象照片 ({image_path})...")
     with open(image_path, "rb") as f:
         uploaded_image = client.files.upload(file=f, config=types.UploadFileConfig(mime_type="image/jpeg", display_name="sync_tongue_image"))
