@@ -2,3 +2,4 @@ google-genai>=1.0
 gradio>=6.14.0
 pandas>=2.1
 python-dotenv>=1.0
+tenacity>=9.0.0
