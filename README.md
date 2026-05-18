@@ -46,8 +46,8 @@
 ### 2. 安裝與初始化
 ```bash
 # 克隆專案
-git clone https://github.com/[你的GitHub帳號]/[專案名稱].git
-cd [專案名稱]
+git clone https://github.com/LNSY116/Tongue-Diagnosis.git
+cd Tongue-Diagnosis
 
 # 使用 uv 同步環境與依賴
 uv sync
@@ -69,18 +69,23 @@ uv run tuning_workflow_sync.py
 ## 📁 目錄說明
 
 ```text
-├── src/                  # 核心原始碼與執行腳本 (待整理移動)
-├── prompts/              # 🎯 [新增] 各版本的提示詞庫 (讓組員可重用與迭代)
-│   └── v1_doctor.txt     # 醫生原版 Prompt
-├── reports/              # 📊 [新增] 實驗報告與數據分析
+├── prompts/                          # 🎯 各版本的提示詞庫 (讓組員可重用與迭代)
+│   └── v1_doctor.txt                 # 醫生原版 Prompt
+├── reports/                          # 📊 實驗報告與數據分析
 │   └── 20260515_experiment_report.md # 最新提示詞實驗報告
-├── experiment_data/      # 基準測試用的影像與資料 (不含個資)
-├── pyproject.toml        # 專案與依賴配置 (uv)
-├── MyTongue.jpg          # 專案視覺與示範素材
-└── README.md             # 專案首頁 (重點指引組員去哪看實驗結果)
+├── .env.example                      # 環境變數範本
+├── .gitignore                        # Git 忽略設定
+├── .python-version                   # Python 版本指定
+├── pyproject.toml                    # 專案與依賴配置 (uv)
+├── uv.lock                           # uv 依賴鎖定檔
+├── retrieve_results.py               # 取得批次執行結果腳本
+├── tuning_workflow_batch.py          # 批次 API 微調工作流
+├── tuning_workflow_colab.ipynb       # Colab 執行筆記本
+├── tuning_workflow_sync.py           # 同步 API 微調工作流
+└── README.md                         # 專案說明文件
 ```
 
-> **關於 `experiment_data/`**：本資料夾僅存放去識別化後的基準測試（Benchmark）影像。真實臨床數據請務必遵循 HIPAA 等醫療隱私規範，請勿上傳至本公開倉庫。
+> **⚠️ 關於測試影像**：執行腳本前，請將你自己的舌診照片放入專案根目錄，並在腳本頂部的 `IMAGE_PATH` 變數中指定檔名。真實臨床數據請務必遵循醫療隱私規範，請勿上傳至本公開倉庫。
 
 ## 🤝 貢獻指南 (Contribution)
 
@@ -96,4 +101,4 @@ uv run tuning_workflow_sync.py
 本專案採用 [MIT License](LICENSE) 授權。
 
 ## 📧 聯絡方式
-如有合作需求或問題回報，歡迎透過 Issue 系統或 Email 與我聯繫：`[你的Email]`
+如有合作需求或問題回報，歡迎透過 [GitHub Issue](https://github.com/LNSY116/Tongue-Diagnosis/issues) 系統與我聯繫。

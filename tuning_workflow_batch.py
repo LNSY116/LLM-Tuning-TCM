@@ -20,7 +20,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("請設定 GEMINI_API_KEY 環境變數。")
 # 根據資料夾結構，MyTongue.jpg 位於專案根目錄
-IMAGE_PATH = os.path.join(os.path.dirname(__file__), "MyTongue.jpg")
+IMAGE_PATH = os.path.join(os.path.dirname(__file__), "MyTongue.jpg")  # ⚠️ 請將你的舌診照片放入專案根目錄，並修改此路徑
 MODEL_NAME = "gemini-2.5-flash"
 REQUESTS_JSONL = "batch_requests.jsonl"
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "outputs")

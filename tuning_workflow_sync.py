@@ -20,7 +20,7 @@ if not API_KEY:
     API_KEY = None # 請在 .env 檔案中設定您的 GEMINI_API_KEY
 
 MODEL_NAME = "gemini-2.5-flash"
-IMAGE_PATH = "MyTongue.jpg"
+IMAGE_PATH = "MyTongue.jpg"  # ⚠️ 請將你的舌診照片放入專案根目錄，並修改此路徑
 PROMPT_PATH = "醫生提示詞參考.txt"
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
