@@ -1,0 +1,8 @@
+description: "Quick Pipeline Test"
+prompts:
+  - file://prompts/v1_base.txt
+providers:
+  - id: google:gemini-2.5-flash
+    config: { temperature: 0.3, topP: 0.5 }
+tests: file://tests.yaml
+outputPath: ./outputs/promptfoo_raw.json
