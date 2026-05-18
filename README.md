@@ -1,104 +1,80 @@
-# 👅 TCM Tongue Diagnosis Model Tuning Framework
+# 👅 TCM Tongue Diagnosis — LLM Parameter Tuning Framework
 
-> 結合傳統中醫理論與現代大語言模型 (LLM)，透過結構化的參數微調與自動化批次驗證，打造專業級中醫舌診 AI 系統。
+> 結合傳統中醫理論與 Google Gemini，透過結構化的參數微調與自動化評分，找出最佳的舌診 Prompt 與推理參數組合。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Package Manager](https://img.shields.io/badge/uv-Fast-red.svg)](https://github.com/astral-sh/uv)
 
-## 🌟 核心理念與方法論創新
+## 🧠 核心方法論
 
-本專案不僅僅是簡單的 API 呼叫，而是建立了一套嚴謹的 **AI 診斷模型評估框架**：
-- **LLM-as-a-Judge 評估維度**：採用動態推論 (N=3) 機制，藉由自動化交叉比對模型輸出的穩定性、中醫辨證的準確度，以及建議的一致性，科學化評估不同 Prompt、Temperature 與 Top-P 參數組合的表現。
-- **Batch API 自動化工作流**：實作非同步批次處理架構，大幅降低大規模實驗成本，適合處理大量舌診影像與多維度參數矩陣測試。
-- **領域知識融合**：將中醫舌象特徵（如舌色、苔色、齒痕等）轉化為結構化的 AI 評分指標。
+- **系統化參數網格搜尋**：測試 3 種 Prompt 版本 × 5 組 Temperature/Top-P 組合。
+- **動態多重推論 (N=3)**：T > 0 時重複推論 3 次，計算 Jaccard 穩定性分數。
+- **混合評分機制 (Rule + LLM Judge)**：規則型評分（關鍵字覆蓋 + 格式）+ Gemini 自評（因果邏輯 + 語言適切性）。
 
-## 🧠 Prompt Engineering 與參數實驗 (Team Focus)
+## 📁 目錄結構
 
-本專案的核心重點在於**中醫舌診 Prompt 的迭代與 LLM 參數最佳化**。為了達到高一致性與高準確度，我們進行了多維度的實驗。
-
-👉 **[查看最新實驗報告：20260515_實驗報告 (含 Temperature 死亡交叉分析)](reports/20260515_experiment_report.md)**
-
-### 我們測試的 Prompt 版本 (`prompts/` 目錄)：
-1. **醫生原版 (`v1_doctor.txt`)**：涵蓋最完整的專業術語，但一致性較難控制。
-2. **思維鏈 CoT 版 (待整理)**：引導模型逐步思考（Step-by-step），試圖平衡專業度與穩定度。
-3. **極度精簡版 (待整理)**：大幅削減背景設定，專注於特徵抽取，取得極高的一致性。
-
-### 給組員的協作指南：
-- **若你要查看不同參數 (Temperature/Top-P) 的影響**：請直接閱讀 `reports/` 下的實驗報告。
-- **若你要新增或測試新的 Prompt**：
-  1. 請在 `prompts/` 建立新的 `.txt` 檔案。
-  2. 修改專案腳本以載入你的 Prompt。
-  3. 執行小規模測試確認後，再使用 Batch API 進行驗證。
-
-## 🛠 核心功能
-
-- `tuning_workflow_batch.py`：基於 Batch API 的低成本參數微調與自動化測試腳本。
-- `tuning_workflow_sync.py`：用於即時開發與小規模驗證的同步推理腳本。
-- `retrieve_results.py`：自動解析與格式化實驗結果的工具。
+```
+├── prompts/
+│   ├── v1_doctor.txt           # 醫生原版 Prompt
+│   └── 醫生提示詞參考.txt       # 本地實驗用提示詞
+├── reports/                    # 實驗報告與分析
+├── outputs/                    # 腳本輸出的 CSV 報告
+├── experiment_data/            # 各實驗逐筆原始文字輸出
+├── .env.example                # 環境變數範本
+├── .gitignore
+├── .python-version
+├── pyproject.toml
+├── uv.lock
+├── archive_old_data.py         # 清理工具
+└── tuning_workflow_sync.py     # 主程式（同步推理）
+```
 
 ## 🚀 快速開始
 
 ### 1. 環境需求
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (超快速 Python 套件管理器)
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv)
 
-### 2. 安裝與初始化
+### 2. 安裝依賴
 ```bash
-# 克隆專案
 git clone https://github.com/LNSY116/Tongue-Diagnosis.git
 cd Tongue-Diagnosis
-
-# 使用 uv 同步環境與依賴
 uv sync
 ```
 
-### 3. 環境變數設定
-請複製 `.env.example` 檔案並填入您的 API Key（專案中 `.env` 已被設定為 git ignore，請放心）：
+### 3. 設定 API Key
 ```bash
 cp .env.example .env
-# 請編輯 .env 填寫您的 API 憑證
+# 編輯 .env，填入你的 GEMINI_API_KEY
 ```
 
-### 4. 執行測試
+### 4. 準備測試影像
+將你的舌診照片放入專案根目錄，並修改 `tuning_workflow_sync.py` 頂部的：
+```python
+IMAGE_PATH = "MyTongue.jpg"  # ← 改成你的檔名
+```
+
+> ⚠️ **隱私提醒**：真實臨床舌診影像請勿上傳至公開 repo，已於 `.gitignore` 排除常見圖片格式。
+
+### 5. 執行實驗
 ```bash
-# 執行同步測試工作流
 uv run tuning_workflow_sync.py
 ```
 
-## 📁 目錄說明
+輸出結果將儲存於 `outputs/doctor_sync_tuning_results.csv`。
 
-```text
-├── prompts/                          # 🎯 各版本的提示詞庫 (讓組員可重用與迭代)
-│   └── v1_doctor.txt                 # 醫生原版 Prompt
-├── reports/                          # 📊 實驗報告與數據分析
-│   └── 20260515_experiment_report.md # 最新提示詞實驗報告
-├── .env.example                      # 環境變數範本
-├── .gitignore                        # Git 忽略設定
-├── .python-version                   # Python 版本指定
-├── pyproject.toml                    # 專案與依賴配置 (uv)
-├── uv.lock                           # uv 依賴鎖定檔
-├── retrieve_results.py               # 取得批次執行結果腳本
-├── tuning_workflow_batch.py          # 批次 API 微調工作流
-├── tuning_workflow_colab.ipynb       # Colab 執行筆記本
-├── tuning_workflow_sync.py           # 同步 API 微調工作流
-└── README.md                         # 專案說明文件
-```
+## 📊 Prompt 版本說明 (`prompts/`)
 
-> **⚠️ 關於測試影像**：執行腳本前，請將你自己的舌診照片放入專案根目錄，並在腳本頂部的 `IMAGE_PATH` 變數中指定檔名。真實臨床數據請務必遵循醫療隱私規範，請勿上傳至本公開倉庫。
+| 版本 | 描述 |
+|---|---|
+| **V1 醫生原版** | 完整專業術語，涵蓋所有診斷維度 |
+| **V2 CoT 版** | 要求輸出思考過程，提升可解釋性 |
+| **V3 精簡版** | 去除客套話，直接條列輸出，一致性最高 |
 
-## 🤝 貢獻指南 (Contribution)
+## 📜 授權
 
-我們歡迎任何形式的貢獻，特別是：
-1. 中醫臨床醫師的 Prompt 優化建議。
-2. 針對 LLM-as-a-Judge 評估標準的擴充。
-3. 程式碼架構優化與 Bug 修復。
+MIT License
 
-請先發起 Issue 討論您的想法，再提交 Pull Request。
+## 📧 聯絡
 
-## 📜 授權條款
-
-本專案採用 [MIT License](LICENSE) 授權。
-
-## 📧 聯絡方式
-如有合作需求或問題回報，歡迎透過 [GitHub Issue](https://github.com/LNSY116/Tongue-Diagnosis/issues) 系統與我聯繫。
+[GitHub Issue](https://github.com/LNSY116/Tongue-Diagnosis/issues)
