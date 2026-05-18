@@ -1,91 +1,71 @@
-# 🔬 LLM 參數調優框架 — 中醫舌診（TCM 舌診）
+# 🔬 LLM Tuning TCM (中醫舌診參數調優框架)
 
-自動化搜尋最佳推理參數（Prompt + Temperature + Top‑P），專為中醫舌診場景設計。本專案為參數調優工具，通常搭配主應用系統使用（例如：https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis）。本框架產出之最佳參數可匯回主應用的配置或 prompt 資料夾。
+這是一個自動化搜尋最佳 LLM 推理參數（Prompt、Temperature、Top-P）的調優工具，專為中醫舌診場景設計。
+調優產出的最佳參數，可直接匯回 [Tongue-Diagnosis 主應用](https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis) 的設定中使用。
 
 ## 🎯 核心功能
-- 網格搜尋：測試多組 Prompt × Temperature × Top‑P 組合
-- 穩定性評估：重複推論並以 Jaccard 相似度量一致性
-- 混合評分：規則檢查（術語覆蓋 / 格式）與 LLM 評分（語言適切性 / 因果邏輯）
-- 實驗追蹤：自動輸出 CSV 報告與原始輸出
+- **網格搜尋 (Grid Search)**：自動交叉測試不同 Prompt、Temperature 與 Top-P 組合。
+- **混合評分機制**：結合規則檢查 (術語覆蓋率、格式) 與 LLM 裁判 (因果邏輯、語言適切性)。
+- **穩定性評估**：針對高溫參數進行多次推論，透過 Jaccard 相似度計算一致性。
+- **自動化報告**：自動產生所有測試組合的 CSV 評分結果與 `best_config.yaml`。
 
-## 📁 資料與目錄位置（注意）
-本次已將非私人資產複製到專案根的 `assets/`（包含 `assets/config/` 與 `assets/prompts/`），以方便直接在專案根執行工作流。
+## 📁 專案結構
+# 🔬 LLM Tuning TCM (中醫舌診參數調優框架)
 
-私人照片與機敏檔案（例如 `archive/Docs_and_Assets/assets/MyTongue.jpg` 與 `archive/Docs_and_Assets/assets/secrets/`）未被複製到根目錄，仍保留在 `archive/` 中以確保隱私安全。
+這是一個自動化搜尋最佳 LLM 推理參數（Prompt、Temperature、Top-P）的調優工具，專為中醫舌診場景設計。
+調優產出的最佳參數，可直接匯回 [Tongue-Diagnosis 主應用](https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis) 的設定中使用。
 
-歷史實驗原始輸出仍在：`archive/Configs_and_Data/experiment_data/`。
+## 🎯 核心功能
+- **網格搜尋 (Grid Search)**：自動交叉測試不同 Prompt、Temperature 與 Top-P 組合。
+- **混合評分機制**：結合規則檢查 (術語覆蓋率、格式) 與 LLM 裁判 (因果邏輯、語言適切性)。
+- **穩定性評估**：針對高溫參數進行多次推論，透過 Jaccard 相似度計算一致性。
+- **自動化報告**：自動產生所有測試組合的 CSV 評分結果與 `best_config.yaml`。
 
-## 🚀 快速開始
+## 📁 專案結構
+```text
+.
+├── assets/                  # 放置公用測試影像 (如 MyTongue.jpg) 與提示詞
+├── archive/                 # 歷史實驗數據、機敏檔案與私人影像 (不進版控)
+├── outputs/                 # 執行腳本後產生的分析報告與最佳參數配置
+├── tuning_workflow_sync.py  # 參數調優核心工作流腳本
+├── requirements.txt         # 依賴套件清單
+└── pyproject.toml           # 專案配置 (支援 uv 等工具)
+```
 
-### 1) 環境需求
-- Python 3.11+
+## 🚀 快速上手
 
-### 2) 安裝依賴（兩種常見選法）
-- 使用 `requirements.txt`：
-
+### 1. 安裝環境
+需搭配 Python 3.11+。
 ```bash
+# 使用 pip
 pip install -r requirements.txt
-```
 
-- 使用 `pyproject.toml`（可用 `pip` 安裝本套件或使用 Poetry）：
-
-```bash
-pip install .
-# 或（開發模式）
-pip install -e .
-```
-
-> 若要使用 `uv`（task runner），請先安裝 `uv`：
-
-```bash
+# 或使用 uv (推薦)
 pip install uv
-# 範例：執行同步工作流
-uv run tuning_workflow_sync.py
+uv pip install -r requirements.txt
 ```
 
-### 3) 設定 API Key
-
+### 2. 環境設定
+複製範例環境檔並填入你的 API Key：
 ```bash
 cp .env.example .env
-# 編輯 .env，填入必要變數（例如 GEMINI_API_KEY）
+# 編輯 .env 填入 GEMINI_API_KEY
 ```
 
-請勿將 `.env` 或 `archive/Docs_and_Assets/assets/secrets/` 提交到版本控制（已在 `.gitignore` 中排除）。
+### 3. 準備測試資料
+請將用來測試的舌象照片放置於 `assets/MyTongue.jpg`。
+*(若要使用個人機敏照片，請放入 `archive/Docs_and_Assets/assets/` 內，腳本會自動 fallback 尋找。)*
 
-### 4) 準備測試影像
-- 若你把影像放在 repo 根的 `assets/`，請於 `tuning_workflow_sync.py` 中設定路徑：
-
-```python
-IMAGE_PATH = "assets/MyTongue.jpg"
-```
-
-若使用目前的 archive 位置，請改為 `archive/Docs_and_Assets/assets/MyTongue.jpg`。
-
-### 5) 執行實驗
-
+### 4. 執行調優
 ```bash
-# 直接用 Python
+# 標準執行
 python tuning_workflow_sync.py
 
-# 或使用 uv（如上）
+# 或使用 uv 執行
 uv run tuning_workflow_sync.py
 ```
 
-## 📊 Prompt 版本說明（`prompts/`）
-
-- **V1 醫生原版**：完整專業術語，涵蓋所有診斷維度
-- **V2 CoT**：要求輸出思考過程，提高可解釋性
-- **V3 精簡版**：去除冗詞、條列輸出，一致性較高
-
-## 範例輸出
-- `outputs/`：CSV 實驗報告、`best_config.yaml`
-- `experiment_data/`：每次實驗的原始 LLM 輸出
-
-注意：`outputs/` 與 `experiment_data/` 為執行時生成的資料夾，通常會加入 `.gitignore`，不一定會出現在遠端倉庫。
-
-## 建議（可選）
-- 在 `.env.example` 補上各欄位說明與是否必填
-- 新增 `CONTRIBUTING.md`（PR / Issue 指引）
-
-## 📜 授權
-MIT License
+### 5. 查看結果
+執行完畢後，結果會儲存於 `outputs/` 目錄：
+- `doctor_sync_tuning_results.csv`：詳細的網格搜尋與評分紀錄 (支援中斷後接續執行)。
+- `best_config.yaml`：系統根據綜合評分選出的最佳參數配置，可直接給主應用使用。
