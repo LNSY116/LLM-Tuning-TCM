@@ -1,0 +1,3 @@
+- vars:
+    PREDICTIONS: "患者主訴胸脅脹滿、食慾不振、舌淡苔白、脈弦細。"
+    case_type: "typical"
