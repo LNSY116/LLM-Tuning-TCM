@@ -7,12 +7,14 @@ from google import genai
 from google.genai import types
 
 # --- 配置區 ---
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    API_KEY = os.environ.get("GEMINI_API_KEY")
-except:
-    API_KEY = None
+API_KEY = os.environ.get("GEMINI_API_KEY")
+if not API_KEY:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        API_KEY = os.environ.get("GEMINI_API_KEY")
+    except ImportError:
+        pass
 
 if not API_KEY:
     API_KEY = None # 請在 .env 檔案中設定您的 GEMINI_API_KEY
