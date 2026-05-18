@@ -6,6 +6,20 @@ import itertools
 from google import genai
 from google.genai import types
 
+# =============================================================================
+# 🔬 LLM Parameter Tuning Framework for TCM Tongue Diagnosis
+# 
+# 📌 專案定位：參數調優實驗工具（非產品端）
+# 🔗 主應用系統：https://github.com/FJCU-AI-APPLICATION/Tongue-Diagnosis
+# 
+# 🔄 協作流程：
+#   1. 從主應用取得「黃金 Prompt」與測試圖片
+#   2. 本框架執行網格搜尋 + 自動化評分
+#   3. 將最佳參數回填至主應用的 assets/config/ 或 prompts/
+# 
+# 📄 授權：本框架僅供內部研發使用，模型權重與主應用程式碼請參閱主 Repo
+# =============================================================================
+
 # --- 配置區 ---
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
@@ -41,7 +55,9 @@ if not os.path.exists(PROMPT_PATH):
 with open(PROMPT_PATH, "r", encoding="utf-8") as f:
     BASE_DOCTOR_PROMPT = f.read()
 
-# 定義微調的 Prompt 組合
+# 💡 Prompt 來源說明：
+# - V1: 直接複製自主應用系統的 system.{current}.md
+# - V2/V3: 本框架實驗用變體，驗證後若有效再回饋至主應用
 PROMPTS = [
     {"prefix": "V1", "desc": "醫生原版", "prompt": BASE_DOCTOR_PROMPT},
     {"prefix": "V2", "desc": "思維鏈(CoT)版", "prompt": BASE_DOCTOR_PROMPT + "\n\n【額外指示】：請在輸出報告之前，先在最開頭寫出你的 <思考過程>，一步步解釋你是如何根據對應表得出這個結論的。"},
@@ -102,7 +118,24 @@ def main():
         uploaded_image = client.files.upload(file=f, config=types.UploadFileConfig(mime_type="image/jpeg", display_name="sync_tongue_image"))
     print(f"✅ 照片上傳完成: {uploaded_image.uri}")
     
+    save_path = os.path.join(OUTPUT_DIR, "doctor_sync_tuning_results.csv")
     results = []
+    
+    # --- 增量邏輯：載入歷史紀錄 ---
+    if os.path.exists(save_path):
+        try:
+            existing_df = pd.read_csv(save_path)
+            results = existing_df.to_dict("records")
+            print(f"📦 載入過往實驗紀錄，共 {len(results)} 筆，將略過已完成之組合。")
+        except Exception as e:
+            print(f"⚠️ 無法讀取舊紀錄: {e}")
+
+    def is_completed(prompt_desc, temp, top_p):
+        for r in results:
+            if r.get("提示詞") == prompt_desc and abs(float(r.get("T", -1)) - temp) < 0.01 and abs(float(r.get("P", -1)) - top_p) < 0.01:
+                return True
+        return False
+
     exp_idx = 1
     total_configs = len(PROMPTS) * len(CONFIG_GRID)
     
@@ -112,6 +145,11 @@ def main():
             exp_id = f"EXP{exp_idx:02d}"
             repeats = get_repeat_count(c["temp"])
             print(f"[{exp_idx}/{total_configs}] {exp_id} - {p['desc']} | T={c['temp']}, P={c['top_p']} | 推論次數={repeats}")
+            
+            if is_completed(p['desc'], c['temp'], c['top_p']):
+                print(f"  └─ ⏩ 已有歷史紀錄，略過執行")
+                exp_idx += 1
+                continue
             
             responses = []
             for i in range(repeats):
@@ -159,11 +197,31 @@ def main():
 
     # 產出最終報告
     df = pd.DataFrame(results)
-    save_path = os.path.join(OUTPUT_DIR, "doctor_sync_tuning_results.csv")
     df.to_csv(save_path, index=False, encoding="utf-8-sig")
     
     print(f"\n🎉 實驗完成！報告已儲存至: {save_path}")
     print(df.to_string())
+
+    # --- 產出 best_config.yaml ---
+    if not df.empty:
+        df["綜合評分_num"] = pd.to_numeric(df["綜合評分"], errors='coerce')
+        best_row = df.sort_values("綜合評分_num", ascending=False).iloc[0]
+        
+        yaml_content = f"""# =========================================================
+# 🎯 最佳參數配置 (由 LLM Tuning Framework 自動產出)
+# 請將此配置回填至主應用的 assets/config/ 或 prompts/
+# =========================================================
+
+best_parameters:
+  prompt_version: "{best_row['提示詞']}"
+  temperature: {best_row['T']}
+  top_p: {best_row['P']}
+  score: {best_row['綜合評分']}
+"""
+        yaml_path = os.path.join(OUTPUT_DIR, "best_config.yaml")
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            f.write(yaml_content)
+        print(f"🎯 最佳參數已產出至: {yaml_path}")
 
 if __name__ == "__main__":
     main()
