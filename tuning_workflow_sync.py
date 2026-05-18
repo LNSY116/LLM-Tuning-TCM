@@ -108,17 +108,17 @@ def call_judge(client, responses):
     except: return {"causal": 3, "language": 3}
 
 # --- 執行主程式 ---
-def main():
+def run_tuning_experiment(api_key, image_path, prompt_path, output_dir="outputs"):
     print("🚀 初始化即時 (Sync) API 測試環境...")
-    client = genai.Client(api_key=API_KEY)
+    client = genai.Client(api_key=api_key)
     
     # 1. 上傳圖片
-    print(f"🖼️ 上傳舌象照片 ({IMAGE_PATH})...")
-    with open(IMAGE_PATH, "rb") as f:
+    print(f"🖼️ 上傳舌象照片 ({image_path})...")
+    with open(image_path, "rb") as f:
         uploaded_image = client.files.upload(file=f, config=types.UploadFileConfig(mime_type="image/jpeg", display_name="sync_tongue_image"))
     print(f"✅ 照片上傳完成: {uploaded_image.uri}")
     
-    save_path = os.path.join(OUTPUT_DIR, "doctor_sync_tuning_results.csv")
+    save_path = os.path.join(output_dir, "doctor_sync_tuning_results.csv")
     results = []
     
     # --- 增量邏輯：載入歷史紀錄 ---
@@ -130,6 +130,19 @@ def main():
         except Exception as e:
             print(f"⚠️ 無法讀取舊紀錄: {e}")
 
+    # 讀取提示詞
+    if not os.path.exists(prompt_path):
+        raise FileNotFoundError(f"找不到 {prompt_path}")
+    
+    with open(prompt_path, "r", encoding="utf-8") as f:
+        base_prompt = f.read()
+
+    prompts_to_test = [
+        {"prefix": "V1", "desc": "醫生原版", "prompt": base_prompt},
+        {"prefix": "V2", "desc": "思維鏈(CoT)版", "prompt": base_prompt + "\n\n【額外指示】：請在輸出報告之前，先在最開頭寫出你的 <思考過程>，一步步解釋你是如何根據對應表得出這個結論的。"},
+        {"prefix": "V3", "desc": "極度精簡版", "prompt": base_prompt + "\n\n【額外指示】：請嚴格遵守上述格式，去除所有多餘的客套話（如'好的'、'這是一份報告'等），直接輸出條列式結果。"},
+    ]
+
     def is_completed(prompt_desc, temp, top_p):
         for r in results:
             if r.get("提示詞") == prompt_desc and abs(float(r.get("T", -1)) - temp) < 0.01 and abs(float(r.get("P", -1)) - top_p) < 0.01:
@@ -137,24 +150,23 @@ def main():
         return False
 
     exp_idx = 1
-    total_configs = len(PROMPTS) * len(CONFIG_GRID)
+    total_configs = len(prompts_to_test) * len(CONFIG_GRID)
     
     print("\n🔥 開始進行組合測試...")
-    for p in PROMPTS:
+    for p in prompts_to_test:
         for c in CONFIG_GRID:
             exp_id = f"EXP{exp_idx:02d}"
             repeats = get_repeat_count(c["temp"])
-            print(f"[{exp_idx}/{total_configs}] {exp_id} - {p['desc']} | T={c['temp']}, P={c['top_p']} | 推論次數={repeats}")
             
             if is_completed(p['desc'], c['temp'], c['top_p']):
-                print(f"  └─ ⏩ 已有歷史紀錄，略過執行")
+                print(f"[{exp_idx}/{total_configs}] {exp_id} - {p['desc']} | T={c['temp']}, P={c['top_p']} | ⏩ 略過")
                 exp_idx += 1
                 continue
             
+            print(f"[{exp_idx}/{total_configs}] {exp_id} - {p['desc']} | T={c['temp']}, P={c['top_p']} | 推論次數={repeats}")
             responses = []
             for i in range(repeats):
                 try:
-                    # 即時呼叫 API
                     res = client.models.generate_content(
                         model=MODEL_NAME,
                         contents=[uploaded_image, p["prompt"]],
@@ -165,14 +177,12 @@ def main():
                         )
                     )
                     responses.append(res.text)
-                    print(f"  └─ run {i+1}: 成功 (長度 {len(res.text)})")
+                    print(f"  └─ run {i+1}: 成功")
                 except Exception as e:
                     print(f"  └─ run {i+1}: 失敗 ❌ {e}")
                 
-                # 為了避免觸發 API Rate Limit，每次呼叫完停頓 3 秒
                 time.sleep(3)
                 
-            # 評分計算
             if responses:
                 print("  ⚖️ 正在進行 LLM Judge 評分...")
                 rule = rule_based_score(responses[0], TCM_KEYWORDS)
@@ -195,14 +205,10 @@ def main():
             exp_idx += 1
             print("-" * 40)
 
-    # 產出最終報告
     df = pd.DataFrame(results)
     df.to_csv(save_path, index=False, encoding="utf-8-sig")
     
-    print(f"\n🎉 實驗完成！報告已儲存至: {save_path}")
-    print(df.to_string())
-
-    # --- 產出 best_config.yaml ---
+    # 產出 best_config.yaml
     if not df.empty:
         df["綜合評分_num"] = pd.to_numeric(df["綜合評分"], errors='coerce')
         best_row = df.sort_values("綜合評分_num", ascending=False).iloc[0]
@@ -218,10 +224,19 @@ best_parameters:
   top_p: {best_row['P']}
   score: {best_row['綜合評分']}
 """
-        yaml_path = os.path.join(OUTPUT_DIR, "best_config.yaml")
+        yaml_path = os.path.join(output_dir, "best_config.yaml")
         with open(yaml_path, "w", encoding="utf-8") as f:
             f.write(yaml_content)
-        print(f"🎯 最佳參數已產出至: {yaml_path}")
+    
+    return df, save_path
+
+def main():
+    try:
+        df, save_path = run_tuning_experiment(API_KEY, IMAGE_PATH, PROMPT_PATH, OUTPUT_DIR)
+        print(f"\n� 實驗完成！報告已儲存至: {save_path}")
+        print(df.to_string())
+    except Exception as e:
+        print(f"❌ 執行出錯: {e}")
 
 if __name__ == "__main__":
     main()
