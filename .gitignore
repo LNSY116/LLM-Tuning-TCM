@@ -268,6 +268,9 @@ outputs/
 result/
 logs/
 
+# Local private backup for images/secrets (not tracked)
+private_backup/
+
 # =========================
 # 正式實驗報告與提示詞 (公開給組員)
 # =========================
