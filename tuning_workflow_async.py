@@ -6,6 +6,7 @@ import itertools
 import re
 from pathlib import Path
 from typing import List, Set
+from evaluator import extract_final_syndromes, calculate_f1, calculate_jaccard_sets
 
 from google import genai
 from google.genai import types
@@ -38,8 +39,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 WEIGHT_ACCURACY = 0.6
 WEIGHT_STABILITY = 0.4
 
-# 合法中醫證素
-VALID_SYNDROMES = {"氣虛", "陽虛", "陰虛", "血虛", "痰濕", "濕熱", "氣滯", "血瘀", "化熱"}
+# 評分相關模組已移至 evaluator.py
 
 def find_asset(rel_path: str) -> str | None:
     candidate = ROOT / "assets" / rel_path
@@ -59,46 +59,7 @@ def find_test_images() -> list[str]:
         return [fallback_img]
     return []
 
-# --- 評分功能 ---
-def extract_syndromes(text: str) -> Set[str]:
-    """萃取文字中出現的合法中醫證素"""
-    if not isinstance(text, str):
-        return set()
-    return {s for s in VALID_SYNDROMES if s in text}
-
-def calculate_stability(responses: List[str]) -> float:
-    """計算多次推論的實體級 Jaccard 一致性"""
-    if not responses or len(responses) < 2:
-        return 1.0
-        
-    extracted_sets = [extract_syndromes(res) for res in responses]
-    sims = []
-    for s1, s2 in itertools.combinations(extracted_sets, 2):
-        if not s1 and not s2:
-            sims.append(1.0)
-        elif not s1 or not s2:
-            sims.append(0.0)
-        else:
-            sims.append(len(s1 & s2) / len(s1 | s2))
-            
-    return sum(sims) / len(sims) if sims else 1.0
-
-def calculate_metrics(predictions: Set[str], ground_truths: Set[str]) -> dict:
-    """計算 Precision, Recall, F1"""
-    if not predictions and not ground_truths:
-        return {"precision": 1.0, "recall": 1.0, "f1": 1.0}
-    if not predictions or not ground_truths:
-        return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
-        
-    tp = len(predictions & ground_truths)
-    fp = len(predictions - ground_truths)
-    fn = len(ground_truths - predictions)
-    
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-    
-    return {"precision": precision, "recall": recall, "f1": f1}
+# --- 評分功能（已移至 evaluator.py） ---
 
 # --- 異步 API 呼叫 ---
 def is_retryable_error(e):
@@ -117,25 +78,12 @@ async def async_generate(client, uploaded_image, prompt_text, temp, top_p):
     )
 
 @retry(wait=wait_exponential(multiplier=2, min=4, max=60), stop=stop_after_attempt(5), retry=retry_if_exception_type(Exception), reraise=True)
-async def async_call_judge(client, ai_response, ground_truth, base_prompt):
-    judge_prompt = f"""你是一位嚴格的中醫診斷裁判。請評估 AI 模型的推論邏輯是否完全符合《中醫舌診對應表》。
-禁止動用外部中醫知識，若 AI 推論出對應表外的因果，視為嚴重幻覺。
-
-【對應表規則（黃金標準）】
-{base_prompt}
-
-【評估對象】
-- 圖片客觀特徵：{ground_truth.get('characteristics', [])}
-- 標準答案證素：{ground_truth.get('true_syndromes', [])}
-- AI 診斷輸出：{ai_response}
-
-【評分維度 (1-5分，5為最佳)】
-1. causal (因果邏輯)：AI 是否準確基於上述「圖片客觀特徵」，對照「對應表」推導出結果？
-2. rule_following (規則遵循)：是否觸發了不合法的證素或違反了「高特異性」壓制規則？
-
-請嚴格回傳 JSON 格式：
-{{"causal": 5, "rule_following": 5, "reasoning": "簡述扣分原因"}}
-"""
+async def async_call_judge(client, ai_response, ground_truth, base_prompt, judge_template):
+    judge_prompt = judge_template.replace("{base_prompt}", base_prompt)
+    judge_prompt = judge_prompt.replace("{characteristics}", str(ground_truth.get('characteristics', [])))
+    judge_prompt = judge_prompt.replace("{true_syndromes}", str(ground_truth.get('true_syndromes', [])))
+    judge_prompt = judge_prompt.replace("{ai_response}", ai_response)
+    
     res = await client.aio.models.generate_content(
         model=JUDGE_MODEL,
         contents=judge_prompt,
@@ -144,7 +92,7 @@ async def async_call_judge(client, ai_response, ground_truth, base_prompt):
     return json.loads(res.text)
 
 # --- 異步 Worker ---
-async def worker(queue, client, save_path, lock, base_prompt, ground_truth_db):
+async def worker(queue, client, save_path, lock, base_prompt, judge_template, ground_truth_db):
     while True:
         task = await queue.get()
         if task is None:
@@ -160,21 +108,32 @@ async def worker(queue, client, save_path, lock, base_prompt, ground_truth_db):
             
             # 取第一次回答作為代表來算 judge
             rep = responses[0]
-            stab = calculate_stability(responses)
+            # 計算穩定性
+            extracted_list = [extract_final_syndromes(r) for r in responses]
+            stab = calculate_jaccard_sets(extracted_list)
             
             gt = ground_truth_db.get(img_filename, {})
-            gt_syndromes = set(gt.get("true_syndromes", []))
-            pred_syndromes = extract_syndromes(rep)
-            metrics = calculate_metrics(pred_syndromes, gt_syndromes)
+            gt_syndromes = gt.get("true_syndromes", [])
+            pred_syndromes = extract_final_syndromes(rep)
+            metrics = calculate_f1(pred_syndromes, gt_syndromes)
             
             try:
-                judge = await async_call_judge(client, rep, gt, base_prompt)
+                judge = await async_call_judge(client, rep, gt, base_prompt, judge_template)
+                judge_status = "success"
             except Exception as je:
                 print(f"⚠️ Judge 失敗: {je}")
-                judge = {"causal": 3, "rule_following": 3}
+                judge = None
+                judge_status = "failed"
                 
-            accuracy = (metrics["f1"] * 5 + judge.get("causal", 3) + judge.get("rule_following", 3)) / 3
-            final = (accuracy * WEIGHT_ACCURACY) + (stab * 5.0 * WEIGHT_STABILITY)
+            if judge is not None:
+                causal = judge.get("causal", 3)
+                rule = judge.get("rule_following", 3)
+                accuracy = (metrics["f1"] * 5 + causal + rule) / 3
+                final = (accuracy * WEIGHT_ACCURACY) + (stab * 5.0 * WEIGHT_STABILITY)
+            else:
+                causal = None
+                rule = None
+                final = None
             
             row = {
                 "實驗編號": exp_id,
@@ -184,7 +143,10 @@ async def worker(queue, client, save_path, lock, base_prompt, ground_truth_db):
                 "圖片": img_filename,
                 "F1": f"{metrics['f1']:.2f}",
                 "一致性": f"{stab:.2f}",
-                "綜合評分": f"{final:.2f}"
+                "Causal": causal if causal is not None else "",
+                "Rule": rule if rule is not None else "",
+                "綜合評分": f"{final:.2f}" if final is not None else "",
+                "Judge_Status": judge_status
             }
             
             async with lock:
@@ -215,17 +177,22 @@ async def main_async():
     with open(prompt_path, "r", encoding="utf-8") as f:
         base_prompt = f.read()
         
+    judge_prompt_path = ROOT / "prompts" / "judge_prompt.md"
+    if not judge_prompt_path.exists():
+        raise FileNotFoundError(f"找不到 {judge_prompt_path}")
+    with open(judge_prompt_path, "r", encoding="utf-8") as f:
+        judge_template = f.read()
+        
     prompts_to_test = [
         {"desc": "專業版(僅限)", "prompt": base_prompt},
     ]
     
-    # 修改網格，移除 T=0 的無效 Top-P 實驗，且 T=0 搭配 Top-P=0.1
-    CONFIG_GRID = [
-        {"temp": 0.0, "top_p": 0.1},
-        {"temp": 0.1, "top_p": 0.5},
-        {"temp": 0.3, "top_p": 0.5},
-        {"temp": 0.5, "top_p": 0.9},
-    ]
+    # 網格搜尋配置：T=0時Top-P無效（因為貪婪解碼下，最高機率的 token 累積機率在第一個就達 100%），故僅取 P=1.0 作為 Baseline。
+    # T>0 時，測試不同溫度與 Top-P 的組合。
+    CONFIG_GRID = [{"temp": 0.0, "top_p": 1.0}]
+    for t in [0.1, 0.3, 0.5]:
+        for p in [0.1, 0.5, 0.9]:
+            CONFIG_GRID.append({"temp": t, "top_p": p})
     
     def get_repeat_count(temp: float) -> int:
         if temp == 0.0: return 1
@@ -272,7 +239,7 @@ async def main_async():
     print(f"🔥 開始異步測試，共 {total} 個未完成任務...")
     
     # 啟動 3 個 Worker
-    workers = [asyncio.create_task(worker(queue, client, save_path, lock, base_prompt, ground_truth_db)) for _ in range(3)]
+    workers = [asyncio.create_task(worker(queue, client, save_path, lock, base_prompt, judge_template, ground_truth_db)) for _ in range(3)]
     
     await queue.join()
     for _ in range(3): queue.put_nowait(None)
