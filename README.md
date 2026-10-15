@@ -14,13 +14,17 @@
 .
 ├── assets/                  # 測試圖片與 ground_truth.json
 ├── prompts/                 # 提示詞存放區
-│   ├── system_prompt_professional.md  # 專業診斷專用 (調優目標)
-│   └── system_prompt_layman.md        # 白話翻譯專用
-├── experiment_data/         # 實驗原始輸出紀錄
-├── outputs/                 # 產生的分析報告與最佳參數配置
-├── reports/                 # 綜合分析報告
-├── tuning_workflow_sync.py  # 舊版同步工作流腳本
-├── tuning_workflow_async.py # 新版非同步高效工作流
+│   ├── system_prompt_professional.md  # 專業臨床推導 (Stage 1 調優目標)
+│   ├── system_prompt_layman.md        # 大眾白話翻譯 (Stage 2 醫病溝通)
+│   └── judge_prompt.md                # LLM-as-a-Judge 評分提示詞 (含 Few-shot)
+├── docs/                    # 研究文件與方法論探討
+│   └── research_notes/      # 提示詞優化與中醫理論審查備忘
+├── evaluator.py             # 核心評測模組 (JSON 強健解析、PRF1、Jaccard 穩定性)
+├── experiment_data/         # 實驗原始輸出與多輪推論數據紀錄
+├── outputs/                 # 調優分析報表 (CSV) 與最佳參數配置
+├── reports/                 # 階段性調優實驗報告 (如 2026-05-15 報告)
+├── tuning_workflow_sync.py  # 第一代同步網格調優工作流
+├── tuning_workflow_async.py # 第二代非同步高併發調優工作流 (斷點續傳)
 ├── requirements.txt         # 依賴套件清單
 └── pyproject.toml           # 專案配置 (支援 uv 等工具)
 ```
@@ -55,6 +59,25 @@ sequenceDiagram
 1. **幻覺阻斷 (Hallucination Isolation)**：Stage 2 的模型無法存取原始圖片，從根本上杜絕了翻譯階段產生新的、與 Stage 1 矛盾的病理特徵。
 2. **延遲優化 (Latency Control)**：Stage 1 輸出精簡 JSON，Token 數量極少（~3s）；Stage 2 可採用串流輸出（Streaming）直達前端（TTFB < 1s），整體體感延遲小於 4 秒。
 3. **優雅降級 (Graceful Degradation)**：若 Stage 2 服務超時或當機，系統可直接渲染 Stage 1 的 JSON 數據作為「專業版報告」展示給用戶，避免服務完全中斷。
+
+## 📊 實證調優成果與關鍵發現 (Empirical Benchmark & Findings)
+
+本框架透過系統性網格搜尋（Grid Search），針對 3 種提示詞微調策略（醫生原版、思維鏈 CoT 版、極度精簡版）與 5 組超參數組合進行嚴格測試（詳見 [2026-05-15 實驗報告](reports/20260515_experiment_report.md) 與 [15組對照實驗數據表](outputs/doctor_sync_tuning_results.csv)）。
+
+### 🏆 最佳生產環境配置 (Production Ready: EXP02)
+- **提示詞**：`system_prompt_professional.md`（醫生 168 行對照表原文，無須額外干預）
+- **超參數**：`Temperature = 0.0`, `Top-P = 0.9`
+- **評測表現**：**診斷一致性 1.00 (完美)**、**術語覆蓋率 37.5% (全場最高)**、**綜合評分 4.10**
+
+### 🔍 三大核心科學發現
+1. **Temperature 的「死亡交叉」效應**：
+   在強規則約束的中醫辨證場景下，**Temperature 從 0.0 提升至 0.1 即引發一致性斷崖式下跌**（從 1.00 跌至 0.23~0.54）。嚴格映射規則容不下任何隨機發揮，臨床推理層必須固定於 `T=0.0`。
+2. **提示詞微調的負面效應 (Prompt Over-engineering)**：
+   - **思維鏈 (CoT) 版**：強迫輸出推理過程反而擠佔了有限輸出空間，導致關鍵證素被大幅稀釋（平均術語覆蓋率僅 1.2%）。
+   - **極度精簡版**：過度服從指令，導致模型省略了必備的病機邏輯分析。
+   - **原版結構已自洽**：手寫的 168 行模組化規則已具備完整推導約束，過多額外指示反成干擾。
+3. **Top-P 的詞彙增強效益**：
+   在 `T=0.0` 確定性解碼下，較高的 `Top-P` (0.9) 允許模型在合法空間內選取更貼切豐富的中醫專業詞彙，術語覆蓋率比低 P 值 (0.1) 提升近一倍 (18.8% → 37.5%)。
 
 ## 🚀 快速上手
 
