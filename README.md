@@ -9,6 +9,37 @@
 - **雙提示詞架構**：將「專業診斷推導」與「大眾白話翻譯」拆分，確保評分的科學性與客觀性。
 - **自動化報告**：自動產生所有測試組合的 CSV 評分結果。
 
+## 🖥️ 智慧舌診全端系統運行展示 (Full-Stack Showcase)
+
+本專案結合前段深度學習特徵抽取與後段大型語言模型辨證，以下為臨床輔助診斷系統之實際運行畫面：
+
+### 1. 系統即時操作展示 (Live Demo)
+<div align="center">
+  <img src="docs/showcase/demo_teaser.gif" alt="System Live Demo" width="720"/>
+  <p><i>▲ 終端操作即時錄影：正面舌象拍照上傳 ➔ 多任務 CNN 特徵分析 ➔ 雲端老中醫 Agent 智能辨證</i></p>
+</div>
+
+### 2. 端到端全端架構與拍照介面
+| 端到端系統架構圖 (Vision + FastAPI + LLM) | 終端鏡頭即時拍照與上傳介面 |
+| :---: | :---: |
+| <img src="docs/showcase/01_system_architecture.png" width="400"/> | <img src="docs/showcase/02_frontend_capture_ui.jpg" width="400"/> |
+
+### 3. 深度學習視覺模型表現 (CV Engineering)
+- **Model A (PyTorch 10-Head CNN)**：同時預測舌色、舌質、舌態、苔質等 10 項特徵，經 100 輪訓練穩定收斂。
+- **Model B (ONNX Sublingual)**：分層 5 折交叉驗證 (Stratified 5-Fold CV)，確保舌下絡脈異常（曲張/囊泡）精準檢出。
+
+| Model A 10頭特徵預測與信心度長條圖 | Model A 100輪收斂戰績圖 | 舌質形態混淆矩陣 (對角線命中294例) |
+| :---: | :---: | :---: |
+| <img src="docs/showcase/03_model_a_confidence_report.png" width="280"/> | <img src="docs/showcase/06_model_a_loss_curve.png" width="280"/> | <img src="docs/showcase/07_model_a_confusion_matrix.png" width="280"/> |
+
+### 4. LLM 臨床推理可解釋性與辨證論證 (Explainable AI)
+- **五步病機因果論證**：徹底打破醫療 AI「黑箱診斷」，AI 自動列出對應表規則與因果演進鏈。
+- **醫病雙向溝通**：同時兼顧臨床醫師專業報告與病患生活調養衛教（體質說明、禁忌食材、穴位按摩）。
+
+| 雲端老中醫結構化體質診斷報告 | 臨床推理五步病機因果論證 (反幻覺白箱化) |
+| :---: | :---: |
+| <img src="docs/showcase/04_gemini_tcm_diagnosis.png" width="400"/> | <img src="docs/showcase/05_gemini_clinical_reasoning.png" width="400"/> |
+
 ## 📁 專案結構
 ```text
 .
@@ -17,8 +48,9 @@
 │   ├── system_prompt_professional.md  # 專業臨床推導 (Stage 1 調優目標)
 │   ├── system_prompt_layman.md        # 大眾白話翻譯 (Stage 2 醫病溝通)
 │   └── judge_prompt.md                # LLM-as-a-Judge 評分提示詞 (含 Few-shot)
-├── docs/                    # 研究文件與方法論探討
-│   └── research_notes/      # 提示詞優化與中醫理論審查備忘
+├── docs/                    # 研究文件與視覺展示素材
+│   ├── research_notes/      # 提示詞優化與中醫理論審查備忘
+│   └── showcase/            # 系統全端運作畫面、混淆矩陣與收斂曲線
 ├── evaluator.py             # 核心評測模組 (JSON 強健解析、PRF1、Jaccard 穩定性)
 ├── experiment_data/         # 實驗原始輸出與多輪推論數據紀錄
 ├── outputs/                 # 調優分析報表 (CSV) 與最佳參數配置
